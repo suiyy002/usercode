@@ -5,6 +5,7 @@
 #include "harm.h"
 #include "power.h"
 #include "rms.h"
+#include "half_rms.h"
 #include "sts.h"
 #include "unbalance.h"
 
@@ -147,6 +148,10 @@ real_sts_result calc::push_data(td_int16_t* data[8], td_uint64_t begin_time,
     calc_rms(pImpl->sample_data_, pImpl->sample_line_data_, pImpl->config_.ch_data_len,
              pImpl->config_.scale, pImpl->config_.nominal_volt, with_neutral,
              pImpl->result_.volt_curr_rms);
+
+    calc_half_rms(pImpl->sample_data_, pImpl->sample_line_data_, pImpl->config_.ch_data_len,
+                  pImpl->config_.scale, pImpl->config_.freq_type, rs_result.half_rms);
+
     // 计算谐波
     float samp_rate, freq;
     get_samprate_freq(pImpl->config_.freq_type, &samp_rate, &freq);

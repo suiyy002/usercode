@@ -180,6 +180,13 @@ typedef struct calc_result {
     power_energy power;                       // 功率电能
 } calc_result;
 
+typedef struct half_rms_result {
+    td_uint32_t number;
+    td_float_t volt_line[4][24];
+    td_float_t volt_phase[3][24];
+    td_float_t curr[4][24];
+} half_rms_result;
+
 // 统计结果结构体
 typedef struct sts_result {
     td_uint64_t begin_time;  // 开始时间

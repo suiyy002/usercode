@@ -10,6 +10,7 @@ typedef struct real_sts_result {
     sts_result sts;           // 统计结果
     td_bool_t sts_available;  // 统计结果是否有效
     flicker_result flicker;   // 波动闪变结果
+    half_rms_result half_rms;
 } real_sts_result;
 
 class __declspec(dllimport) calc {
