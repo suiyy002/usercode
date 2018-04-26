@@ -8,22 +8,9 @@
 #include "half_rms.h"
 #include "sts.h"
 #include "unbalance.h"
+#include "zal_chn_fluct.h"
 
 #define SAMPLE_PER_CYCLE (512)  // 每周波采样点数
-
-//APIENTRY声明DLL函数入口点
-BOOL APIENTRY DllMain(HANDLE hModule, DWORD ul_reason_for_call, LPVOID lpReserved)
-{
-	switch (ul_reason_for_call)
-	{
-	case DLL_PROCESS_ATTACH:
-	case DLL_THREAD_ATTACH:
-	case DLL_THREAD_DETACH:
-	case DLL_PROCESS_DETACH:
-		break;
-	}
-	return TRUE;
-}
 
 struct impl {
     calc_config config_;
@@ -32,6 +19,7 @@ struct impl {
     td_int16_t* sample_line_data_[3];  // 线电压波形
     statistic* p_sts_;
     flicker_wrapper* flicker_[3];
+    ZalChnFluctInfo* fluct_;
 };
 
 calc::calc(void) {
@@ -40,6 +28,7 @@ calc::calc(void) {
     for (int i = 0; i != 3; ++i) {
         pImpl->flicker_[i] = new flicker_wrapper(25600);
     }
+    zalChnFluctInit(pImpl->fluct_, 3);
 }
 
 calc::~calc(void) {
@@ -47,6 +36,7 @@ calc::~calc(void) {
     for (int i = 0; i != 3; ++i) {
         delete pImpl->flicker_[i];
     }
+    zalChnFluctDeinit(pImpl->fluct_);
     delete pImpl;
 }
 
@@ -90,11 +80,16 @@ void fetch_flicker_result(impl* pImpl, real_sts_result& rs_result,
     const td_uint64_t _10min = 10llu * 60 * 1000 * 1000 * 10;
     const td_uint64_t _100ms = 100llu * 1000 * 10;
     td_uint64_t remain = end_time % _10min;
+    float dummy;
     if ((remain < _100ms) || ((_10min - remain) < _100ms)) {
         rs_result.flicker.pst_available = true;
         for (int i = 0; i != 3; ++i) {
             rs_result.flicker.pst[i] = pImpl->flicker_[i]->get_pst();
         }
+        float fluctChange[3];
+        zalFluctFromFlicker(pImpl->fluct_, rs_result.flicker.pst,
+            rs_result.flicker.fluct, fluctChange);
+        zalChnFluctReset(pImpl->fluct_);
     } else {
         rs_result.flicker.pst_available = false;
     }
@@ -149,6 +144,7 @@ real_sts_result calc::push_data(td_int16_t* data[8], td_uint64_t begin_time,
              pImpl->config_.scale, pImpl->config_.nominal_volt, with_neutral,
              pImpl->result_.volt_curr_rms);
 
+    // 计算半波有效值
     calc_half_rms(pImpl->sample_data_, pImpl->sample_line_data_, pImpl->config_.ch_data_len,
                   pImpl->config_.scale, pImpl->config_.freq_type, rs_result.half_rms);
 
@@ -167,6 +163,13 @@ real_sts_result calc::push_data(td_int16_t* data[8], td_uint64_t begin_time,
     // 计算闪变
     for (int i = 0; i != 3; ++i) {
         pImpl->flicker_[i]->input(pImpl->sample_data_[i], pImpl->config_.ch_data_len);
+        if (pImpl->config_.conn_type == conntype_3p4w) {
+            zalChnFluctCalc(i, rs_result.half_rms.volt_phase[i],
+                            pImpl->fluct_, rs_result.half_rms.number);
+        } else {
+            zalChnFluctCalc(i, rs_result.half_rms.volt_line[i],
+                            pImpl->fluct_, rs_result.half_rms.number);
+        }
     }
     rs_result.real = pImpl->result_;
     rs_result.sts_available =
@@ -182,6 +185,7 @@ void calc::reset() {
     for (int i = 0; i != 3; ++i) {
         pImpl->flicker_[i]->reset();
     }
+    zalChnFluctReset(pImpl->fluct_);
 }
 
 void calc::set_time_interval_sec(td_int32_t interval) {
