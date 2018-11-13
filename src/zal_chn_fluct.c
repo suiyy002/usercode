@@ -91,6 +91,7 @@ ZalVoid zalChnFluctInit( ZalChnFluctInfo *pFluctInfo, ZalInt32 nPhases )
 {
     ZalInt32 i;
 
+    pFluctInfo = malloc(sizeof(ZalChnFluctInfo));
     pFluctInfo->nPhases = nPhases;
 
     pFluctInfo->count                = malloc(sizeof(ZalInt32)*nPhases);
@@ -341,4 +342,6 @@ ZalVoid zalChnFluctDeinit( ZalChnFluctInfo *pFluctInfo)
     free( pFluctInfo->pst3_sum );
     free( pFluctInfo->pst3_count );
     free( pFluctInfo->cmp_4000_count );
+    free(pFluctInfo);
+    pFluctInfo = 0;
 }
