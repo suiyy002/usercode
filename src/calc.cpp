@@ -40,11 +40,11 @@ calc::~calc(void) {
     delete pImpl;
 }
 
-void get_samprate_freq(freq_type freq_type, // [in]
+void get_samprate_freq(freq_type freq_type_, // [in]
                        float* samp_rate,    // [out]
                        float* freq)         // [out]
 {
-    switch(freq_type) {
+    switch(freq_type_) {
     case freqtype_50hz:
         *freq = 50.0f;
         break;
